@@ -295,14 +295,25 @@
                         status,
                         transaksi_item (
                             qty,
-                            model_id,
-                            model (nama, harga)
+                            model_id
                         )
                     `)
                     .gte('tanggal', periode + '-01')
                     .lte('tanggal', periode + '-31');
                 
                 if (transError) throw transError;
+
+                // Ambil semua model terpisah (hindari ketergantungan ke FK relationship PostgREST)
+                const { data: modelData, error: modelError } = await sbInventory
+                    .from('model')
+                    .select('id, nama, harga');
+
+                if (modelError) throw modelError;
+
+                const modelMap = {};
+                if (modelData) {
+                    modelData.forEach(m => { modelMap[m.id] = m; });
+                }
                 
                 let totalPendapatan = 0;
                 const detailPendapatan = {};
@@ -311,10 +322,11 @@
                     transaksiData.forEach(trans => {
                         if (trans.transaksi_item) {
                             trans.transaksi_item.forEach(item => {
-                                const subtotal = item.qty * (item.model?.harga || 0);
+                                const modelInfo = modelMap[item.model_id];
+                                const subtotal = item.qty * (modelInfo?.harga || 0);
                                 totalPendapatan += subtotal;
                                 
-                                const modelName = item.model?.nama || 'Unknown';
+                                const modelName = modelInfo?.nama || 'Unknown';
                                 if (!detailPendapatan[modelName]) {
                                     detailPendapatan[modelName] = { qty: 0, nominal: 0 };
                                 }
@@ -501,6 +513,15 @@
                 });
             }
 
+            // Ambil semua model terpisah (dipakai untuk semua bulan, sekali ambil saja)
+            const { data: modelDataTren } = await sbInventory
+                .from('model')
+                .select('id, nama, harga');
+            const modelMapTren = {};
+            if (modelDataTren) {
+                modelDataTren.forEach(m => { modelMapTren[m.id] = m; });
+            }
+
             for (let i = 5; i >= 0; i--) {
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 const bulanStr = d.toISOString().slice(0, 7);
@@ -509,7 +530,7 @@
                 // 1. Pendapatan bulan ini
                 const { data: transaksiData } = await sbInventory
                     .from('transaksi')
-                    .select(`transaksi_item (qty, model_id, model (nama, harga))`)
+                    .select(`transaksi_item (qty, model_id)`)
                     .gte('tanggal', bulanStr + '-01')
                     .lte('tanggal', bulanStr + '-31');
 
@@ -519,8 +540,9 @@
                     transaksiData.forEach(trans => {
                         if (trans.transaksi_item) {
                             trans.transaksi_item.forEach(item => {
-                                pendapatan += item.qty * (item.model?.harga || 0);
-                                const modelName = item.model?.nama || 'Unknown';
+                                const modelInfo = modelMapTren[item.model_id];
+                                pendapatan += item.qty * (modelInfo?.harga || 0);
+                                const modelName = modelInfo?.nama || 'Unknown';
                                 qtyPerModel[modelName] = (qtyPerModel[modelName] || 0) + item.qty;
                             });
                         }
