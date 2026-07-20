@@ -37,6 +37,39 @@
         .textDark { color: #8B4513; }
         .positive { color: #10B981; }
         .negative { color: #EF4444; }
+        .tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 13px;
+            white-space: nowrap;
+            color: #8B4513;
+            background: #FFEFDB;
+            border: 1px solid #FFB144;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            flex-shrink: 0;
+        }
+        .tab-btn:hover { background: #FFE3BE; }
+        .tab-btn.active {
+            background: #FFB144;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(255,140,0,0.35);
+        }
+        .tab-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .tab-scroll::-webkit-scrollbar { display: none; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
     </style>
 </head>
 <body class="darkBg">
@@ -54,123 +87,154 @@
     </script>
 
     <!-- MAIN CONTENT -->
-    <div class="container mx-auto p-4 max-w-6xl">
+    <div class="container mx-auto p-3 sm:p-4 max-w-6xl">
         <!-- HEADER -->
-        <header class="flex justify-between items-center mb-6">
+        <header class="flex justify-between items-center mb-4 sm:mb-6">
             <div class="flex items-center gap-2">
-                <i class="fa-solid fa-chart-line text-2xl text-[#FFB144]"></i>
-                <h1 class="text-2xl font-bold text-[#8B4513]">LABA RUGI</h1>
+                <i class="fa-solid fa-chart-line text-xl sm:text-2xl text-[#FFB144]"></i>
+                <h1 class="text-xl sm:text-2xl font-bold text-[#8B4513]">LABA RUGI</h1>
             </div>
         </header>
 
         <!-- PILIH PERIODE -->
         <div class="bg-[#FFEFDB] p-4 rounded-xl shadow mb-4 border border-[#FFB144]">
             <h2 class="text-lg font-bold text-gray-700 mb-3">Pilih Periode</h2>
-            <div class="flex gap-3">
-                <input type="month" id="periode-bulan" class="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144]">
-                <button onclick="hitungLabaRugi()" class="bg-[#FFB144] text-white font-bold px-6 py-3 rounded-lg hover:bg-orange-500 transition">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <input type="month" id="periode-bulan" class="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144] text-base">
+                <button onclick="hitungLabaRugi()" class="bg-[#FFB144] text-white font-bold px-6 py-3 rounded-lg hover:bg-orange-500 transition w-full sm:w-auto">
                     <i class="fa-solid fa-calculator mr-2"></i>HITUNG
                 </button>
             </div>
         </div>
 
-        <!-- SETTING HPP PER MODEL -->
-        <div class="bg-[#FFEFDB] p-4 rounded-xl shadow mb-4 border border-[#FFB144]">
-            <div class="flex justify-between items-center cursor-pointer" onclick="toggleSettingHpp()">
-                <h2 class="text-lg font-bold text-gray-700">
-                    <i class="fa-solid fa-tags mr-2 text-[#FFB144]"></i>Setting HPP per Model
-                </h2>
-                <i id="icon-toggle-hpp" class="fa-solid fa-chevron-down text-[#FFB144] transition-transform"></i>
-            </div>
-            <p class="text-xs text-gray-500 mt-1">Isi harga pokok (HPP) tiap model sekali di sini. Nilai ini dipakai otomatis untuk hitung HPP terjual tiap bulan.</p>
-            <div id="wrap-list-model-hpp" class="hidden mt-3 space-y-2 max-h-96 overflow-y-auto">
-                <p class="text-gray-500 text-center py-4">Memuat daftar model...</p>
-            </div>
+        <!-- TAB NAVIGASI -->
+        <div class="tab-scroll mb-4">
+            <button type="button" class="tab-btn active" data-tab="tab-ringkasan" onclick="switchTab('tab-ringkasan')">
+                <i class="fa-solid fa-chart-simple"></i> Ringkasan
+            </button>
+            <button type="button" class="tab-btn" data-tab="tab-detail" onclick="switchTab('tab-detail')">
+                <i class="fa-solid fa-list-ul"></i> Detail Pendapatan &amp; HPP
+            </button>
+            <button type="button" class="tab-btn" data-tab="tab-detail-transaksi" onclick="switchTab('tab-detail-transaksi')">
+                <i class="fa-solid fa-file-invoice-dollar"></i> Detail per Transaksi
+            </button>
+            <button type="button" class="tab-btn" data-tab="tab-opex" onclick="switchTab('tab-opex')">
+                <i class="fa-solid fa-receipt"></i> Biaya Operasional
+            </button>
+            <button type="button" class="tab-btn" data-tab="tab-tren" onclick="switchTab('tab-tren')">
+                <i class="fa-solid fa-chart-line"></i> Tren 6 Bulan
+            </button>
         </div>
 
         <!-- LOADING -->
-        <div id="loading" class="hidden bg-[#FFEFDB] p-8 rounded-xl shadow border border-[#FFB144] text-center">
+        <div id="loading" class="hidden bg-[#FFEFDB] p-8 rounded-xl shadow border border-[#FFB144] text-center mb-4">
             <i class="fa-solid fa-spinner fa-spin text-4xl text-[#FFB144] mb-3"></i>
             <p class="text-gray-600">Menghitung laba rugi...</p>
         </div>
 
-        <!-- HASIL LABA RUGI -->
-        <div id="hasil-laba-rugi" class="hidden space-y-4">
-            <!-- RINGKASAN -->
-            <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
-                <h3 class="text-lg font-bold text-gray-700 mb-3">Ringkasan <span id="periode-label" class="text-[#FFB144]"></span></h3>
-                
-                <div class="space-y-3">
-                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
-                        <span class="font-medium text-gray-700">Pendapatan (Penjualan)</span>
-                        <span id="total-pendapatan" class="text-xl font-bold text-[#FFB144]">Rp 0</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
-                        <span class="font-medium text-gray-700">HPP Terjual (COGS)</span>
-                        <span id="total-hpp" class="text-xl font-bold text-red-500">Rp 0</span>
-                    </div>
-                    
-                    <div class="border-t-2 border-[#FFB144] pt-3">
+        <!-- HASIL LABA RUGI (dibungkus per tab) -->
+        <div id="hasil-laba-rugi" class="hidden">
+
+            <!-- TAB: RINGKASAN -->
+            <div id="tab-ringkasan" class="tab-panel active">
+                <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
+                    <h3 class="text-lg font-bold text-gray-700 mb-3">Ringkasan <span id="periode-label" class="text-[#FFB144]"></span></h3>
+
+                    <div class="space-y-3">
                         <div class="flex justify-between items-center bg-white p-3 rounded-lg">
-                            <span class="font-bold text-gray-800">LABA KOTOR</span>
-                            <span id="laba-kotor" class="text-2xl font-bold positive">Rp 0</span>
+                            <span class="font-medium text-gray-700">Pendapatan (Penjualan)</span>
+                            <span id="total-pendapatan" class="text-xl font-bold text-[#FFB144]">Rp 0</span>
+                        </div>
+
+                        <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                            <span class="font-medium text-gray-700">HPP Terjual (COGS)</span>
+                            <span id="total-hpp" class="text-xl font-bold text-red-500">Rp 0</span>
+                        </div>
+
+                        <div class="border-t-2 border-[#FFB144] pt-3">
+                            <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                                <span class="font-bold text-gray-800">LABA KOTOR</span>
+                                <span id="laba-kotor" class="text-2xl font-bold positive">Rp 0</span>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                            <span class="font-medium text-gray-700">Biaya Gaji (Payroll)</span>
+                            <span id="total-gaji" class="text-xl font-bold text-red-500">Rp 0</span>
+                        </div>
+
+                        <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                            <span class="font-medium text-gray-700">Biaya Operasional Lain</span>
+                            <span id="total-opex" class="text-xl font-bold text-red-500">Rp 0</span>
+                        </div>
+
+                        <div class="border-t-2 border-[#FFB144] pt-3">
+                            <div class="flex justify-between items-center bg-white p-3 rounded-lg">
+                                <span class="font-bold text-gray-800">LABA BERSIH</span>
+                                <span id="laba-bersih" class="text-2xl font-bold positive">Rp 0</span>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
-                        <span class="font-medium text-gray-700">Biaya Gaji (Payroll)</span>
-                        <span id="total-gaji" class="text-xl font-bold text-red-500">Rp 0</span>
-                    </div>
-                    
-                    <div class="flex justify-between items-center bg-white p-3 rounded-lg">
-                        <span class="font-medium text-gray-700">Biaya Operasional Lain</span>
-                        <span id="total-opex" class="text-xl font-bold text-red-500">Rp 0</span>
-                    </div>
-                    
-                    <div class="border-t-2 border-[#FFB144] pt-3">
-                        <div class="flex justify-between items-center bg-white p-3 rounded-lg">
-                            <span class="font-bold text-gray-800">LABA BERSIH</span>
-                            <span id="laba-bersih" class="text-2xl font-bold positive">Rp 0</span>
-                        </div>
+                </div>
+            </div>
+
+            <!-- TAB: DETAIL PENDAPATAN & HPP -->
+            <div id="tab-detail" class="tab-panel space-y-4">
+                <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
+                    <h3 class="text-lg font-bold text-gray-700 mb-3">Detail Pendapatan</h3>
+                    <div id="detail-pendapatan" class="space-y-2">
+                        <p class="text-gray-500 text-center py-4">Memuat...</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- DETAIL PENDAPATAN -->
-            <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
-                <h3 class="text-lg font-bold text-gray-700 mb-3">Detail Pendapatan</h3>
-                <div id="detail-pendapatan" class="space-y-2">
-                    <p class="text-gray-500 text-center py-4">Memuat...</p>
+                <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
+                    <h3 class="text-lg font-bold text-gray-700 mb-3">Detail HPP Terjual</h3>
+                    <div id="detail-hpp" class="space-y-2">
+                        <p class="text-gray-500 text-center py-4">Memuat...</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- DETAIL HPP -->
-            <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
-                <h3 class="text-lg font-bold text-gray-700 mb-3">Detail HPP Terjual</h3>
-                <div id="detail-hpp" class="space-y-2">
-                    <p class="text-gray-500 text-center py-4">Memuat...</p>
+            <!-- TAB: DETAIL PER TRANSAKSI -->
+            <div id="tab-detail-transaksi" class="tab-panel">
+                <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
+                    <h3 class="text-lg font-bold text-gray-700 mb-1">Detail per Transaksi</h3>
+                    <p class="text-xs text-gray-500 mb-3">Rincian harga jual, HPP, dan laba untuk tiap transaksi keluar (dari yang terbaru).</p>
+                    <div id="detail-transaksi" class="space-y-2">
+                        <p class="text-gray-500 text-center py-4">Memuat...</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- BIAYA OPERASIONAL LAIN -->
-            <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-lg font-bold text-gray-700">Biaya Operasional Lain</h3>
-                    <button onclick="showFormOpex()" class="bg-[#FFB144] text-white px-4 py-2 rounded-lg hover:bg-orange-500 transition">
-                        <i class="fa-solid fa-plus mr-1"></i>Tambah
-                    </button>
-                </div>
-                <div id="list-opex" class="space-y-2">
-                    <p class="text-gray-500 text-center py-4">Memuat...</p>
+            <!-- TAB: BIAYA OPERASIONAL LAIN -->
+            <div id="tab-opex" class="tab-panel">
+                <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-bold text-gray-700">Biaya Operasional Lain</h3>
+                        <button onclick="showFormOpex()" class="bg-[#FFB144] text-white px-4 py-2 rounded-lg hover:bg-orange-500 transition">
+                            <i class="fa-solid fa-plus mr-1"></i>Tambah
+                        </button>
+                    </div>
+                    <div id="list-opex" class="space-y-2">
+                        <p class="text-gray-500 text-center py-4">Memuat...</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- GRAFIK TREN -->
-            <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
-                <h3 class="text-lg font-bold text-gray-700 mb-3">Tren Laba Bersih (6 Bulan Terakhir)</h3>
-                <canvas id="chart-tren"></canvas>
+            <!-- TAB: GRAFIK TREN -->
+            <div id="tab-tren" class="tab-panel">
+                <div class="bg-[#FFEFDB] p-4 rounded-xl shadow border border-[#FFB144]">
+                    <h3 class="text-lg font-bold text-gray-700 mb-3">Tren Laba Bersih (6 Bulan Terakhir)</h3>
+                    <canvas id="chart-tren"></canvas>
+                </div>
             </div>
+
+        </div>
+
+        <!-- STATE AWAL: sebelum tekan HITUNG -->
+        <div id="empty-state" class="bg-[#FFEFDB] p-8 rounded-xl shadow border border-[#FFB144] text-center">
+            <i class="fa-solid fa-chart-pie text-4xl text-[#FFB144] mb-3"></i>
+            <p class="text-gray-600">Pilih periode di atas lalu tekan <span class="font-bold">HITUNG</span> untuk melihat laba rugi.</p>
         </div>
 
         <!-- MODAL FORM BIAYA OPERASIONAL -->
@@ -180,7 +244,7 @@
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                    <select id="opex-kategori" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144]">
+                    <select id="opex-kategori" class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144] text-base">
                         <option value="Sewa">Sewa</option>
                         <option value="Listrik">Listrik</option>
                         <option value="Air">Air</option>
@@ -194,13 +258,13 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Nominal (Rp)</label>
                     <input type="number" id="opex-nominal" placeholder="0" 
-                           class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144]">
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144] text-base">
                 </div>
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan (Opsional)</label>
                     <input type="text" id="opex-keterangan" placeholder="Contoh: Listrik bulan Januari" 
-                           class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144]">
+                           class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144] text-base">
                 </div>
                 
                 <div class="flex gap-3">
@@ -227,6 +291,21 @@
             document.getElementById('periode-bulan').value = monthStr;
         });
 
+        // ===== TAB NAVIGASI =====
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            const panel = document.getElementById(tabId);
+            if (panel) panel.classList.add('active');
+            const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            if (btn) btn.classList.add('active');
+
+            // Redraw chart saat tab Tren dibuka (canvas butuh ukuran yang sudah visible)
+            if (tabId === 'tab-tren' && chartInstance) {
+                chartInstance.resize();
+            }
+        }
+
         function closeModal(modalId) {
             document.getElementById(modalId).classList.add('hidden');
         }
@@ -235,75 +314,18 @@
             document.getElementById('modal-opex').classList.remove('hidden');
         }
 
-        // ===== SETTING HPP PER MODEL =====
-        let modelHppLoaded = false;
-
-        function toggleSettingHpp() {
-            const wrap = document.getElementById('wrap-list-model-hpp');
-            const icon = document.getElementById('icon-toggle-hpp');
-            const willOpen = wrap.classList.contains('hidden');
-            wrap.classList.toggle('hidden');
-            icon.style.transform = willOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-            if (willOpen && !modelHppLoaded) {
-                loadDaftarModelHpp();
-            }
-        }
-
-        async function loadDaftarModelHpp() {
-            const wrap = document.getElementById('wrap-list-model-hpp');
-            const { data, error } = await sbInventory
-                .from('model')
-                .select('id, brand_nama, nama, harga, hpp')
-                .order('brand_nama', { ascending: true })
-                .order('nama', { ascending: true });
-
-            if (error) {
-                wrap.innerHTML = `<p class="text-red-500 text-center py-4">Gagal memuat daftar model: ${error.message}</p>
-                    <p class="text-xs text-gray-500 text-center">Pastikan kolom "hpp" sudah ditambahkan ke tabel model (lihat file add_hpp_column.sql).</p>`;
-                return;
-            }
-
-            modelHppLoaded = true;
-
-            if (!data || data.length === 0) {
-                wrap.innerHTML = '<p class="text-gray-500 text-center py-4">Belum ada data model.</p>';
-                return;
-            }
-
-            wrap.innerHTML = data.map(m => `
-                <div class="flex items-center gap-2 bg-white p-3 rounded-lg">
-                    <div class="flex-1 min-w-0">
-                        <p class="font-medium text-gray-800 truncate">${m.nama}</p>
-                        <p class="text-xs text-gray-500">${m.brand_nama || '-'} &middot; Harga jual: ${formatRupiah(m.harga)}</p>
-                    </div>
-                    <input type="number" id="hpp-input-${m.id}" value="${m.hpp || 0}" placeholder="HPP per pcs"
-                           class="w-32 p-2 rounded-lg border border-gray-300 focus:outline-none focus:border-[#FFB144] text-right">
-                    <button onclick="simpanHppModel(${m.id})" class="bg-[#FFB144] text-white px-3 py-2 rounded-lg hover:bg-orange-500 transition flex-shrink-0">
-                        <i class="fa-solid fa-check"></i>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        async function simpanHppModel(modelId) {
-            const input = document.getElementById('hpp-input-' + modelId);
-            const hppValue = parseFloat(input.value) || 0;
-
-            const { error } = await sbInventory
-                .from('model')
-                .update({ hpp: hppValue })
-                .eq('id', modelId);
-
-            if (error) {
-                alert('Gagal menyimpan HPP: ' + error.message);
-            } else {
-                input.classList.add('border-green-500');
-                setTimeout(() => input.classList.remove('border-green-500'), 800);
-            }
-        }
-
         function formatRupiah(angka) {
             return 'Rp ' + parseInt(angka || 0).toLocaleString('id-ID');
+        }
+
+        // Expand/collapse kartu di tab "Detail per Transaksi" (gaya sama seperti Riwayat Transaksi)
+        function toggleDetailTrxCard(uid) {
+            const body = document.getElementById(uid + '-body');
+            const chevron = document.getElementById(uid + '-chevron');
+            if (!body) return;
+            const willOpen = body.classList.contains('hidden');
+            body.classList.toggle('hidden');
+            if (chevron) chevron.style.transform = willOpen ? 'rotate(180deg)' : 'rotate(0deg)';
         }
 
         async function simpanOpex() {
@@ -363,6 +385,7 @@
                 return;
             }
             
+            document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('hasil-laba-rugi').classList.add('hidden');
             
@@ -370,36 +393,59 @@
                 // 1. Hitung Pendapatan dari Transaksi
                 // Skema asli: model & harga (per unit) ada di tabel transaksi itu sendiri.
                 // transaksi_item cuma breakdown varian (warna/ukuran) dengan qty masing-masing.
+                // PENTING: kolom `tanggal` di tabel transaksi disimpan sebagai TEKS format
+                // Indonesia (mis. "20 Jul 2026") oleh app Inventory, jadi TIDAK BISA difilter
+                // pakai range ISO string ("2026-07-01".."2026-07-31") — perbandingan teks itu
+                // tidak sama dengan perbandingan tanggal asli dan akan selalu kosong.
+                // Makanya filter di sini pakai `created_at` (timestamptz asli) yang otomatis
+                // benar dari database.
+                const periodeAwal = periode + '-01T00:00:00';
+                const [pTahun, pBulan] = periode.split('-').map(Number);
+                const nextMonthDate = new Date(pTahun, pBulan, 1); // bulan berikutnya, tanggal 1
+                const periodeAkhir = nextMonthDate.toISOString().slice(0, 10) + 'T00:00:00';
                 const { data: transaksiData, error: transError } = await sbInventory
                     .from('transaksi')
                     .select(`
                         id,
                         tanggal,
+                        jam,
                         status,
                         brand,
                         model,
                         harga,
+                        created_at,
                         transaksi_item (
+                            warna,
+                            ukuran,
                             qty
                         )
                     `)
-                    .gte('tanggal', periode + '-01')
-                    .lte('tanggal', periode + '-31');
+                    .gte('created_at', periodeAwal)
+                    .lt('created_at', periodeAkhir);
                 
                 if (transError) throw transError;
 
-                // Ambil HPP per model dari tabel master model (kolom hpp, diisi manual di Setting HPP per Model)
-                const { data: modelHppData, error: modelHppError } = await sbInventory
-                    .from('model')
-                    .select('brand_nama, nama, hpp');
+                // Ambil HPP per model secara OTOMATIS dari histori produksi (riwayat_produksi),
+                // bukan input manual lagi — karena HPP sudah dihitung & tersimpan otomatis
+                // di modul Produksi/HPP pada app Inventory (biaya bahan + tenaga kerja per pcs).
+                // Diambil hpp_per_pcs dari produksi TERAKHIR (created_at paling baru) untuk
+                // tiap kombinasi brand+model, supaya selalu pakai angka HPP paling update.
+                const { data: produksiData, error: produksiError } = await sbInventory
+                    .from('riwayat_produksi')
+                    .select('brand, model, hpp_per_pcs, created_at')
+                    .order('created_at', { ascending: false });
 
-                if (modelHppError) throw modelHppError;
+                if (produksiError) throw produksiError;
 
                 const hppLookup = {};
-                if (modelHppData) {
-                    modelHppData.forEach(m => {
-                        const key = (m.brand_nama || '') + '||' + (m.nama || '');
-                        hppLookup[key] = m.hpp || 0;
+                if (produksiData) {
+                    produksiData.forEach(p => {
+                        const key = (p.brand || '') + '||' + (p.model || '');
+                        // Karena data sudah diurutkan terbaru ke terlama, entri PERTAMA yang
+                        // ditemui per key adalah HPP produksi paling baru — abaikan sisanya.
+                        if (!(key in hppLookup)) {
+                            hppLookup[key] = p.hpp_per_pcs || 0;
+                        }
                     });
                 }
                 
@@ -407,7 +453,8 @@
                 let totalHppTerjual = 0;
                 const detailPendapatan = {};
                 const detailHpp = {};
-                
+                const detailTransaksi = []; // rincian per transaksi individual: HPP, harga jual, laba
+
                 if (transaksiData) {
                     transaksiData.forEach(trans => {
                         const totalQty = (trans.transaksi_item || []).reduce((sum, it) => sum + (it.qty || 0), 0);
@@ -426,6 +473,23 @@
                         const hppPerUnit = hppLookup[key] || 0;
                         const hppTerjualTrans = totalQty * hppPerUnit;
                         totalHppTerjual += hppTerjualTrans;
+
+                        // Simpan rincian transaksi ini untuk tab "Detail Transaksi"
+                        detailTransaksi.push({
+                            id: trans.id,
+                            tanggal: trans.tanggal || '-',
+                            jam: trans.jam || '',
+                            status: trans.status || 'kredit',
+                            brand: trans.brand || '-',
+                            model: modelName,
+                            qty: totalQty,
+                            items: trans.transaksi_item || [],
+                            hargaJualPerUnit: trans.harga || 0,
+                            totalHargaJual: subtotal,
+                            hppPerUnit: hppPerUnit,
+                            totalHpp: hppTerjualTrans,
+                            laba: subtotal - hppTerjualTrans
+                        });
 
                         if (!detailHpp[modelName]) {
                             detailHpp[modelName] = { qty: 0, hppPerUnit: hppPerUnit, totalHpp: 0 };
@@ -511,6 +575,63 @@
                     `).join('')
                     : '<p class="text-gray-500 text-center py-4">Tidak ada data HPP</p>';
                 document.getElementById('detail-hpp').innerHTML = detailHppHtml;
+
+                // Detail Transaksi (rincian per transaksi: HPP, harga jual, laba) — terbaru dulu
+                // Gaya kartu dibuat mirip "RIWAYAT TRANSAKSI" di app Inventory: badge status,
+                // chip warna/ukuran per item, dan bisa expand/collapse untuk lihat rincian HPP & laba.
+                detailTransaksi.sort((a, b) => (b.id || 0) - (a.id || 0));
+                const detailTransaksiHtml = detailTransaksi.length > 0
+                    ? detailTransaksi.map((t, idx) => {
+                        const uid = 'lr-trx-' + (t.id || idx);
+                        const isLunas = t.status === 'lunas';
+                        const statusClass = isLunas ? 'bg-green-600 text-white border-green-700' : 'bg-red-600 text-white border-red-700';
+                        const itemsPreview = (t.items || []).slice(0, 3).map(i =>
+                            `<span class="text-[10px] bg-[#FFEFDB] border border-[#FFB144] rounded px-1.5 py-0.5 text-gray-700">${i.warna || '-'}/${i.ukuran || '-'}: <b>${i.qty || 0}</b></span>`
+                        ).join('') + ((t.items || []).length > 3 ? `<span class="text-[10px] text-gray-500">+${t.items.length - 3} lagi</span>` : '');
+
+                        return `<div id="card-${uid}" class="bg-white rounded-lg border border-[#FFB144] overflow-hidden">
+                            <div class="flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer" onclick="toggleDetailTrxCard('${uid}')">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="px-2 py-0.5 ${statusClass} border text-[9px] font-black rounded tracking-wider flex-shrink-0">${isLunas ? 'LUNAS' : 'KREDIT'}</span>
+                                        <span class="text-[12px] font-black text-gray-800 uppercase truncate">${t.brand} / ${t.model}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span class="text-[11px] text-[#FFB144] font-black">${t.qty} pcs &middot; ${formatRupiah(t.totalHargaJual)}</span>
+                                        <div class="flex gap-1 flex-wrap">${itemsPreview}</div>
+                                    </div>
+                                    <div class="text-[10px] text-gray-500 mt-0.5">${t.tanggal}${t.jam ? ' ' + t.jam : ''}</div>
+                                </div>
+                                <div class="flex flex-col items-end flex-shrink-0">
+                                    <span class="font-bold text-base ${t.laba >= 0 ? 'positive' : 'negative'}">${formatRupiah(t.laba)}</span>
+                                    <i id="${uid}-chevron" class="fa-solid fa-chevron-down text-[10px] text-gray-400 transition-transform mt-1"></i>
+                                </div>
+                            </div>
+                            <div id="${uid}-body" class="hidden px-3 pb-3 border-t border-[#FFB144]/40">
+                                <div class="flex flex-wrap gap-1 pt-2">
+                                    ${(t.items || []).map(i => `<span class="text-[10px] bg-[#FFEFDB] border border-[#FFB144] rounded px-2 py-0.5 text-gray-700">${i.warna || '-'} / ${i.ukuran || '-'}: <b>${i.qty || 0}</b></span>`).join('') || '<span class="text-[10px] text-gray-400">Tidak ada rincian varian</span>'}
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-sm mt-3">
+                                    <div>
+                                        <p class="text-gray-500">Harga Jual</p>
+                                        <p class="font-medium text-gray-800">${formatRupiah(t.hargaJualPerUnit)}/pcs</p>
+                                        <p class="text-xs text-gray-500">Total: ${formatRupiah(t.totalHargaJual)}</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-500">HPP</p>
+                                        <p class="font-medium text-red-500">${formatRupiah(t.hppPerUnit)}/pcs</p>
+                                        <p class="text-xs text-gray-500">Total: ${formatRupiah(t.totalHpp)}</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center mt-2 pt-2 border-t border-[#FFB144]/40">
+                                    <span class="font-bold text-gray-700 text-sm">LABA TRANSAKSI INI</span>
+                                    <span class="font-bold text-lg ${t.laba >= 0 ? 'positive' : 'negative'}">${formatRupiah(t.laba)}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('')
+                    : '<p class="text-gray-500 text-center py-4">Tidak ada transaksi di periode ini</p>';
+                document.getElementById('detail-transaksi').innerHTML = detailTransaksiHtml;
                 
                 // List Opex
                 const listOpexHtml = opexData && opexData.length > 0
@@ -550,16 +671,19 @@
             const bulanList = [];
             const labaList = [];
 
-            // Ambil HPP per model dari tabel master model (sama untuk semua bulan, ambil sekali saja)
-            const { data: modelHppDataTren } = await sbInventory
-                .from('model')
-                .select('brand_nama, nama, hpp');
+            // Ambil HPP per model secara otomatis dari histori produksi (sama untuk semua bulan, ambil sekali saja)
+            const { data: produksiDataTren } = await sbInventory
+                .from('riwayat_produksi')
+                .select('brand, model, hpp_per_pcs, created_at')
+                .order('created_at', { ascending: false });
 
             const hppLookupTren = {};
-            if (modelHppDataTren) {
-                modelHppDataTren.forEach(m => {
-                    const key = (m.brand_nama || '') + '||' + (m.nama || '');
-                    hppLookupTren[key] = m.hpp || 0;
+            if (produksiDataTren) {
+                produksiDataTren.forEach(p => {
+                    const key = (p.brand || '') + '||' + (p.model || '');
+                    if (!(key in hppLookupTren)) {
+                        hppLookupTren[key] = p.hpp_per_pcs || 0;
+                    }
                 });
             }
 
@@ -569,11 +693,17 @@
                 bulanList.push(bulanStr);
 
                 // 1. Pendapatan & HPP bulan ini (model & harga ada di tabel transaksi, bukan di transaksi_item)
+                // Sama seperti hitungLabaRugi(): filter pakai created_at (timestamptz asli),
+                // bukan kolom tanggal (teks "20 Jul 2026") yang tidak bisa dibandingkan sebagai range.
+                const trenPeriodeAwal = bulanStr + '-01T00:00:00';
+                const [trTahun, trBulan] = bulanStr.split('-').map(Number);
+                const trenNextMonth = new Date(trTahun, trBulan, 1);
+                const trenPeriodeAkhir = trenNextMonth.toISOString().slice(0, 10) + 'T00:00:00';
                 const { data: transaksiData } = await sbInventory
                     .from('transaksi')
                     .select(`brand, model, harga, transaksi_item (qty)`)
-                    .gte('tanggal', bulanStr + '-01')
-                    .lte('tanggal', bulanStr + '-31');
+                    .gte('created_at', trenPeriodeAwal)
+                    .lt('created_at', trenPeriodeAkhir);
 
                 let pendapatan = 0;
                 let hppTerjual = 0;
